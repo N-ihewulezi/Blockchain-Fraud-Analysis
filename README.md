@@ -2,7 +2,10 @@
 
 **Author:** Nkechi Ihewulezi  
 **Dataset:** Elliptic Bitcoin Transaction Dataset  
-**Tools:** Python · NetworkX · Plotly · D3.js · Pandas · PyVis
+**Tools:** ![Python](https://img.shields.io/badge/Python-3.10-blue?style=flat-square)
+![NetworkX](https://img.shields.io/badge/NetworkX-Graph%20Analysis-orange?style=flat-square)
+![Plotly](https://img.shields.io/badge/Plotly-Interactive%20Charts-purple?style=flat-square)
+[![Live Dashboard](https://img.shields.io/badge/Dashboard-Live%20Demo-FFD700?style=flat-square)](https://n-ihewulezi.github.io/Blockchain-Fraud-Analysis/Dashboard/blockchain_fraud_dashboard.html)
 
 ---
 
@@ -13,12 +16,6 @@ linked to potential illicit activity. This project analyses 203,769
 real-world Bitcoin transactions using graph analytics to map the network, 
 identify structural hubs, detect suspicious flow patterns, and produce a 
 defensible compliance report.
-
----
-![Python](https://img.shields.io/badge/Python-3.10-blue?style=flat-square)
-![NetworkX](https://img.shields.io/badge/NetworkX-Graph%20Analysis-orange?style=flat-square)
-![Plotly](https://img.shields.io/badge/Plotly-Interactive%20Charts-purple?style=flat-square)
-[![Live Dashboard](https://img.shields.io/badge/Dashboard-Live%20Demo-FFD700?style=flat-square)](https://n-ihewulezi.github.io/Blockchain-Fraud-Analysis/Dashboard/blockchain_fraud_dashboard.html)
 
 ---
 ## Key Findings
@@ -99,12 +96,12 @@ Available on Kaggle: [Elliptic Data Set](https://www.kaggle.com/ellipticco/ellip
 ---
 
 ## Repository Structure
+```
 ├── notebooks/     # Fully executed Jupyter notebook
 ├── dashboard/     # Self-contained interactive HTML dashboard
 ├── reports/       # Compliance report PDF
-├── data/processed/# Cleaned and pattern CSV outputs
-└── visuals/       # Network graph and dashboard screenshots
-
+└── visuals/       # Network graph and Network Graph Demo
+```
 ---
 
 ## Skills Demonstrated
