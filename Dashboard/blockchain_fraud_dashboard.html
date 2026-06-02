@@ -1,0 +1,735 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Bitcoin Fraud Network Dashboard</title>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<style>
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #0f0f23;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+header {
+    background: linear-gradient(90deg, #1a1a3e, #2d1b69);
+    padding: 18px 30px;
+    border-bottom: 2px solid #4a3fa0;
+}
+
+header h1 {
+    font-size: 1.6em;
+    color: #c8b4ff;
+}
+
+header p {
+    color: #888;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+.filter-bar {
+    padding: 14px 30px;
+    background: #161630;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.filter-btn:hover {
+    transform: scale(1.05);
+}
+
+.filter-btn.active {
+    box-shadow: 0 0 12px rgba(255,255,255,0.4);
+}
+
+.filter-btn.all {
+    background: #4a3fa0;
+    color: white;
+}
+
+.filter-btn.illicit {
+    background: #c0392b;
+    color: white;
+}
+
+.filter-btn.licit {
+    background: #27ae60;
+    color: white;
+}
+
+.filter-btn.unknown {
+    background: #636e72;
+    color: white;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 20px 30px;
+}
+
+.panel {
+    background: #161630;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #2a2a5a;
+}
+
+.panel.full-width {
+    grid-column: 1 / -1;
+}
+
+.panel h2 {
+    color: #c8b4ff;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.95em;
+}
+
+.stats {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.stat {
+    background: #1f1f4a;
+    padding: 12px 16px;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 110px;
+}
+
+.stat .val {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #c8b4ff;
+}
+
+.stat .lbl {
+    font-size: 0.75em;
+    color: #888;
+    margin-top: 4px;
+}
+
+#network-svg {
+    width: 100%;
+    height: 450px;
+}
+
+.legend {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8em;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82em;
+}
+
+thead th {
+    background: #1f1f4a;
+    color: #c8b4ff;
+    padding: 10px 8px;
+    position: sticky;
+    top: 0;
+}
+
+tbody td {
+    padding: 8px;
+    border-bottom: 1px solid #1f1f4a;
+}
+
+tbody tr:hover {
+    background: #1f1f4a;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75em;
+    font-weight: 600;
+}
+
+.badge.illicit {
+    background: #c0392b;
+    color: white;
+}
+
+.badge.licit {
+    background: #27ae60;
+    color: white;
+}
+
+.badge.unknown {
+    background: #636e72;
+    color: white;
+}
+
+.risk-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #4a3fa0, #e74c3c);
+}
+
+#timechart {
+    height: 350px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<h1>Bitcoin Fraud Network — Compliance Dashboard</h1>
+
+<p>
+Elliptic Bitcoin Dataset Analysis ·
+Subgraph Nodes: 8,021 ·
+Suspicious Transactions Flagged: 6
+</p>
+
+</header>
+
+<div class="filter-bar">
+
+<button class="filter-btn all active"
+        onclick="applyFilter('all')">
+All
+</button>
+
+<button class="filter-btn illicit"
+        onclick="applyFilter('illicit')">
+🔴 Illicit
+</button>
+
+<button class="filter-btn licit"
+        onclick="applyFilter('licit')">
+🟢 Licit
+</button>
+
+<button class="filter-btn unknown"
+        onclick="applyFilter('unknown')">
+⚫ Unknown
+</button>
+
+</div>
+
+<div class="dashboard">
+
+<div class="panel full-width">
+
+<div class="stats">
+
+<div class="stat">
+<div class="val">8,021</div>
+<div class="lbl">Subgraph Nodes</div>
+</div>
+
+<div class="stat">
+<div class="val">9,428</div>
+<div class="lbl">Subgraph Edges</div>
+</div>
+
+<div class="stat">
+<div class="val" style="color:#e74c3c">
+127
+</div>
+<div class="lbl">Illicit Nodes</div>
+</div>
+
+<div class="stat">
+<div class="val" style="color:#27ae60">
+2032
+</div>
+<div class="lbl">Licit Nodes</div>
+</div>
+
+<div class="stat">
+<div class="val">6</div>
+<div class="lbl">Flagged Suspicious</div>
+</div>
+
+<div class="stat">
+<div class="val">2</div>
+<div class="lbl">Layering Patterns</div>
+</div>
+
+<div class="stat">
+<div class="val">6</div>
+<div class="lbl">Fan-Out Patterns</div>
+</div>
+
+</div>
+</div>
+
+<div class="panel">
+
+<h2>Interactive Transaction Network</h2>
+
+<div class="legend">
+
+<div class="legend-item">
+<div class="legend-dot" style="background:#e74c3c"></div>
+Illicit
+</div>
+
+<div class="legend-item">
+<div class="legend-dot" style="background:#27ae60"></div>
+Licit
+</div>
+
+<div class="legend-item">
+<div class="legend-dot" style="background:#95a5a6"></div>
+Unknown
+</div>
+
+<div class="legend-item">
+<div class="legend-dot"
+     style="background:#f1c40f;width:16px;height:16px"></div>
+Top 10 Risk
+</div>
+
+</div>
+
+<svg id="network-svg"></svg>
+
+</div>
+
+<div class="panel">
+
+<h2>Top 20 Risk Ranking</h2>
+
+<div class="table-wrapper">
+
+<table>
+
+<thead>
+<tr>
+<th>#</th>
+<th>Transaction</th>
+<th>Class</th>
+<th>In</th>
+<th>Out</th>
+<th>Betweenness</th>
+<th>PageRank</th>
+<th>Risk</th>
+</tr>
+</thead>
+
+<tbody id="table-body"></tbody>
+
+</table>
+
+</div>
+</div>
+
+<div class="panel full-width">
+
+<h2>Transaction Activity Across Time</h2>
+
+<div id="timechart"></div>
+
+</div>
+
+</div>
+
+<script>
+
+const NODES = [{"id": 7658496, "x": 0.697699, "y": 0.152489, "label": "licit", "time_step": 1, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 7014913, "x": 0.566118, "y": 0.489008, "label": "licit", "time_step": 39, "risk": 0.004239, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 121540098, "x": 0.114617, "y": 0.522933, "label": "unknown", "time_step": 6, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 14586371, "x": -0.300176, "y": -0.169205, "label": "unknown", "time_step": 4, "risk": 0.00477, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 30179335, "x": 0.479263, "y": 0.120506, "label": "unknown", "time_step": 37, "risk": 0.003393, "in_degree": 0, "out_degree": 3, "top10": false}, {"id": 115154951, "x": 0.209603, "y": 0.162428, "label": "unknown", "time_step": 39, "risk": 0.003393, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 7965704, "x": 0.710345, "y": -0.350029, "label": "licit", "time_step": 39, "risk": 0.004328, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 15449100, "x": 0.237098, "y": 0.337909, "label": "unknown", "time_step": 43, "risk": 0.007378, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 92491280, "x": 0.775051, "y": 0.012465, "label": "licit", "time_step": 1, "risk": 0.136461, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 30179348, "x": 0.509787, "y": 0.128457, "label": "unknown", "time_step": 37, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 43093013, "x": 0.272398, "y": 0.223203, "label": "unknown", "time_step": 10, "risk": 0.00477, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 68456983, "x": 0.153288, "y": -0.352766, "label": "unknown", "time_step": 10, "risk": 0.00477, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 22837784, "x": -0.498953, "y": 0.276505, "label": "licit", "time_step": 4, "risk": 0.198153, "in_degree": 6, "out_degree": 0, "top10": false}, {"id": 68705820, "x": 0.195021, "y": 0.133362, "label": "licit", "time_step": 10, "risk": 0.439902, "in_degree": 5, "out_degree": 0, "top10": true}, {"id": 22837790, "x": 0.939395, "y": 0.265048, "label": "licit", "time_step": 4, "risk": 0.05943, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 224210974, "x": 0.236412, "y": 0.148489, "label": "licit", "time_step": 5, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 30179361, "x": 0.495152, "y": 0.125519, "label": "unknown", "time_step": 37, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 224210977, "x": 0.23641, "y": 0.148473, "label": "unknown", "time_step": 5, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 121654821, "x": -0.053796, "y": 0.059538, "label": "unknown", "time_step": 6, "risk": 0.322493, "in_degree": 5, "out_degree": 2, "top10": false}, {"id": 106320422, "x": 0.185926, "y": 0.09002, "label": "licit", "time_step": 44, "risk": 0.233313, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 2268197, "x": 0.112763, "y": 0.009272, "label": "unknown", "time_step": 48, "risk": 0.221936, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 12284459, "x": -0.177822, "y": -0.077207, "label": "licit", "time_step": 39, "risk": 0.005107, "in_degree": 1, "out_degree": 3, "top10": false}, {"id": 2240556, "x": -0.442848, "y": 0.033674, "label": "unknown", "time_step": 4, "risk": 0.014386, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 28808235, "x": 0.345843, "y": 0.066403, "label": "unknown", "time_step": 37, "risk": 0.003393, "in_degree": 0, "out_degree": 3, "top10": false}, {"id": 30179375, "x": 0.473255, "y": 0.120258, "label": "unknown", "time_step": 37, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 106319919, "x": 0.395455, "y": 0.535538, "label": "licit", "time_step": 44, "risk": 0.100037, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 3807285, "x": -0.285932, "y": -0.173732, "label": "unknown", "time_step": 4, "risk": 0.009678, "in_degree": 2, "out_degree": 1, "top10": false}, {"id": 94372918, "x": 0.069428, "y": 0.17533, "label": "unknown", "time_step": 7, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 355008569, "x": 0.272752, "y": -0.11682, "label": "unknown", "time_step": 32, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 234890810, "x": 0.260552, "y": 0.211453, "label": "unknown", "time_step": 11, "risk": 0.369761, "in_degree": 5, "out_degree": 0, "top10": true}, {"id": 63375421, "x": 0.293366, "y": 0.610384, "label": "unknown", "time_step": 10, "risk": 0.013108, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 67964989, "x": 0.291179, "y": 0.610831, "label": "unknown", "time_step": 10, "risk": 0.004806, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 30151745, "x": -0.095957, "y": 0.27291, "label": "licit", "time_step": 37, "risk": 0.230904, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 372745794, "x": 0.132635, "y": 0.20876, "label": "illicit", "time_step": 22, "risk": 0.25987, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 314950723, "x": 0.461596, "y": 0.127026, "label": "unknown", "time_step": 22, "risk": 0.006848, "in_degree": 2, "out_degree": 0, "top10": false}, {"id": 35171908, "x": 0.455132, "y": 0.262502, "label": "unknown", "time_step": 5, "risk": 0.003393, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 234890821, "x": 0.220906, "y": 0.69831, "label": "unknown", "time_step": 11, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 30179395, "x": 0.432626, "y": 0.107591, "label": "unknown", "time_step": 37, "risk": 0.004239, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 58495048, "x": 0.455163, "y": 0.262501, "label": "unknown", "time_step": 5, "risk": 0.004135, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 208537161, "x": -0.113665, "y": 0.401042, "label": "unknown", "time_step": 1, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 149569098, "x": 0.401394, "y": 0.027888, "label": "licit", "time_step": 39, "risk": 0.21862, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 49220170, "x": 0.269605, "y": 0.614679, "label": "unknown", "time_step": 10, "risk": 0.021107, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 218295883, "x": 0.105378, "y": 0.58595, "label": "licit", "time_step": 47, "risk": 0.0089, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 355008589, "x": 0.267736, "y": -0.117668, "label": "unknown", "time_step": 32, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 2228301, "x": -0.007923, "y": 0.255209, "label": "unknown", "time_step": 4, "risk": 0.00477, "in_degree": 0, "out_degree": 3, "top10": false}, {"id": 355012175, "x": 0.277361, "y": 0.282603, "label": "unknown", "time_step": 32, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 268964432, "x": 0.270642, "y": 0.219156, "label": "unknown", "time_step": 25, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 121492562, "x": 0.179198, "y": 0.48804, "label": "unknown", "time_step": 6, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 355176021, "x": 0.219978, "y": 0.851677, "label": "unknown", "time_step": 32, "risk": 0.122659, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 234890837, "x": 0.801186, "y": 0.219024, "label": "unknown", "time_step": 11, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 355110999, "x": 0.247715, "y": 0.302852, "label": "unknown", "time_step": 32, "risk": 0.004239, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 4672600, "x": 0.2375, "y": 0.337829, "label": "unknown", "time_step": 43, "risk": 0.007378, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 234890841, "x": 0.513171, "y": 0.626949, "label": "unknown", "time_step": 11, "risk": 0.004239, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 355008601, "x": 0.01797, "y": -0.099463, "label": "illicit", "time_step": 32, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 15244375, "x": -0.02457, "y": 0.08239, "label": "unknown", "time_step": 4, "risk": 0.004605, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 196107869, "x": 0.043125, "y": 0.031327, "label": "licit", "time_step": 46, "risk": 0.352051, "in_degree": 5, "out_degree": 0, "top10": true}, {"id": 230658142, "x": 0.055993, "y": 0.212285, "label": "unknown", "time_step": 1, "risk": 0.249607, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 234890847, "x": 0.000703, "y": 0.622403, "label": "unknown", "time_step": 11, "risk": 0.00433, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 106651741, "x": 0.181462, "y": 0.525568, "label": "licit", "time_step": 22, "risk": 0.005618, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 209488479, "x": 0.30593, "y": 0.405707, "label": "unknown", "time_step": 20, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 12780133, "x": 0.107783, "y": 0.439031, "label": "licit", "time_step": 41, "risk": 0.091586, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 234890854, "x": -0.280226, "y": 0.209823, "label": "unknown", "time_step": 11, "risk": 0.004366, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 232910950, "x": -0.24483, "y": -0.07203, "label": "unknown", "time_step": 1, "risk": 0.00957, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 28836458, "x": 0.219278, "y": 0.401333, "label": "unknown", "time_step": 37, "risk": 0.004239, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 30276715, "x": 0.229271, "y": 0.538166, "label": "licit", "time_step": 37, "risk": 0.333972, "in_degree": 6, "out_degree": 0, "top10": false}, {"id": 1050220, "x": -0.110219, "y": 0.406821, "label": "unknown", "time_step": 1, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 209837677, "x": -0.058398, "y": 0.081765, "label": "licit", "time_step": 20, "risk": 0.232966, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 7834222, "x": -0.553648, "y": 0.005347, "label": "licit", "time_step": 47, "risk": 0.003393, "in_degree": 0, "out_degree": 3, "top10": false}, {"id": 149843562, "x": -0.030747, "y": 0.334474, "label": "licit", "time_step": 49, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 230658155, "x": 0.145565, "y": 0.601921, "label": "unknown", "time_step": 1, "risk": 0.006009, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 218285685, "x": -0.354119, "y": 0.474809, "label": "unknown", "time_step": 47, "risk": 0.008735, "in_degree": 2, "out_degree": 0, "top10": false}, {"id": 332771446, "x": 0.04679, "y": 0.099868, "label": "illicit", "time_step": 23, "risk": 0.217055, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 372691574, "x": 0.451044, "y": 0.595098, "label": "unknown", "time_step": 22, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 10773622, "x": -0.084104, "y": 0.221922, "label": "unknown", "time_step": 39, "risk": 0.003393, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 372691580, "x": -0.046843, "y": 0.648527, "label": "unknown", "time_step": 22, "risk": 0.004239, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 16921725, "x": 0.10181, "y": 0.586759, "label": "unknown", "time_step": 47, "risk": 0.007523, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 232438397, "x": 0.299474, "y": 0.139736, "label": "licit", "time_step": 1, "risk": 0.312365, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 96580735, "x": 0.120323, "y": 0.177582, "label": "unknown", "time_step": 7, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 230530176, "x": -0.139352, "y": 0.405261, "label": "unknown", "time_step": 1, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 372691583, "x": -0.365197, "y": 0.262072, "label": "unknown", "time_step": 22, "risk": 0.00433, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 230658174, "x": -0.517166, "y": 0.459523, "label": "unknown", "time_step": 1, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 99676293, "x": -0.275802, "y": 0.414788, "label": "unknown", "time_step": 21, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 269236358, "x": 0.06016, "y": 0.446748, "label": "unknown", "time_step": 25, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 31741064, "x": 0.237778, "y": 0.337872, "label": "unknown", "time_step": 43, "risk": 0.007378, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 99676297, "x": 0.032244, "y": 0.505575, "label": "unknown", "time_step": 21, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 45555339, "x": 0.380885, "y": 0.751615, "label": "unknown", "time_step": 36, "risk": 0.110648, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 230530189, "x": -0.197263, "y": 0.419289, "label": "unknown", "time_step": 1, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 347550863, "x": 0.001728, "y": 0.128631, "label": "licit", "time_step": 12, "risk": 0.236432, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 12780176, "x": -0.10181, "y": -0.014137, "label": "licit", "time_step": 41, "risk": 0.210504, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 99676304, "x": -0.401326, "y": 0.282587, "label": "unknown", "time_step": 21, "risk": 0.004239, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 94227091, "x": -0.170497, "y": -0.393086, "label": "licit", "time_step": 47, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 36364435, "x": 0.101432, "y": 0.58686, "label": "licit", "time_step": 47, "risk": 0.007523, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 268996244, "x": -0.142644, "y": 0.501902, "label": "unknown", "time_step": 25, "risk": 0.004239, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 24092310, "x": -0.229904, "y": 0.375159, "label": "licit", "time_step": 37, "risk": 0.005067, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 121540247, "x": 0.423529, "y": 0.183381, "label": "unknown", "time_step": 6, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 121540249, "x": 0.08823, "y": 0.534204, "label": "unknown", "time_step": 6, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 230530202, "x": -0.271752, "y": 0.426738, "label": "unknown", "time_step": 1, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 268996252, "x": -0.606056, "y": 0.312329, "label": "unknown", "time_step": 25, "risk": 0.00433, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 43397277, "x": -0.171643, "y": 0.022401, "label": "licit", "time_step": 10, "risk": 0.31344, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 99675805, "x": -0.431894, "y": 0.227787, "label": "unknown", "time_step": 21, "risk": 0.008029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 21498012, "x": -0.468249, "y": -0.061961, "label": "licit", "time_step": 37, "risk": 0.003393, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 94187168, "x": -0.253505, "y": 0.219488, "label": "unknown", "time_step": 7, "risk": 0.004239, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 155650212, "x": -0.112239, "y": -0.294065, "label": "unknown", "time_step": 45, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 200653992, "x": -0.342477, "y": 0.102687, "label": "licit", "time_step": 36, "risk": 0.004664, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 217665704, "x": -0.343019, "y": 0.103462, "label": "unknown", "time_step": 36, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 224210605, "x": -0.115712, "y": 0.485483, "label": "unknown", "time_step": 5, "risk": 0.007837, "in_degree": 2, "out_degree": 1, "top10": false}, {"id": 96365231, "x": -0.090301, "y": 0.08693, "label": "illicit", "time_step": 33, "risk": 0.308758, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 70245040, "x": 0.063762, "y": 0.373353, "label": "unknown", "time_step": 36, "risk": 0.246175, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 43390127, "x": -0.470815, "y": 0.407422, "label": "unknown", "time_step": 10, "risk": 0.005222, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 1377967, "x": -0.016537, "y": 0.190485, "label": "unknown", "time_step": 4, "risk": 0.00571, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 94609074, "x": -0.310964, "y": 0.173079, "label": "unknown", "time_step": 7, "risk": 0.005405, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 12665008, "x": -0.106135, "y": -0.011676, "label": "licit", "time_step": 41, "risk": 0.011509, "in_degree": 4, "out_degree": 1, "top10": false}, {"id": 91400373, "x": 0.068985, "y": 0.367471, "label": "licit", "time_step": 39, "risk": 0.00433, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 3097782, "x": -0.003108, "y": 0.231304, "label": "unknown", "time_step": 4, "risk": 0.009434, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 230530231, "x": -0.40953, "y": 0.410128, "label": "unknown", "time_step": 1, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 18059446, "x": -0.353719, "y": 0.119549, "label": "unknown", "time_step": 36, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 89273, "x": 0.242671, "y": -0.032564, "label": "licit", "time_step": 1, "risk": 0.216601, "in_degree": 1, "out_degree": 5, "top10": false}, {"id": 4893367, "x": -0.189072, "y": 0.176927, "label": "licit", "time_step": 41, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 331563186, "x": -0.28265, "y": 0.020664, "label": "unknown", "time_step": 23, "risk": 0.004239, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 339175100, "x": 0.102572, "y": -0.168852, "label": "unknown", "time_step": 13, "risk": 0.236949, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 149158077, "x": -0.396397, "y": 0.264756, "label": "licit", "time_step": 39, "risk": 0.004664, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 17997502, "x": -0.241016, "y": 0.184951, "label": "licit", "time_step": 39, "risk": 0.003393, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 92549311, "x": -0.575263, "y": 0.137065, "label": "unknown", "time_step": 33, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 345837244, "x": -0.46539, "y": 0.26859, "label": "licit", "time_step": 12, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 6930625, "x": -0.273483, "y": 0.093349, "label": "unknown", "time_step": 39, "risk": 0.005875, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 116898498, "x": 0.065293, "y": 0.131063, "label": "licit", "time_step": 38, "risk": 0.23196, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 68706499, "x": 0.194804, "y": 0.133435, "label": "licit", "time_step": 10, "risk": 0.308819, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 372690625, "x": -0.35455, "y": 0.225574, "label": "unknown", "time_step": 22, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 36864715, "x": -0.511261, "y": 0.252969, "label": "licit", "time_step": 49, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 22837965, "x": 0.462285, "y": 0.101613, "label": "licit", "time_step": 4, "risk": 0.170364, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 60146895, "x": -0.234963, "y": -0.097157, "label": "unknown", "time_step": 10, "risk": 0.005733, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 115936466, "x": -0.434369, "y": 0.158332, "label": "unknown", "time_step": 38, "risk": 0.003323, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 382951636, "x": -0.569995, "y": 0.349579, "label": "unknown", "time_step": 31, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 13964502, "x": -0.024024, "y": 0.142324, "label": "unknown", "time_step": 4, "risk": 0.005095, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 94452952, "x": -0.300156, "y": -0.043962, "label": "licit", "time_step": 7, "risk": 0.009176, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 121801433, "x": -0.423759, "y": -0.277012, "label": "unknown", "time_step": 6, "risk": 0.066977, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 382997214, "x": -0.219942, "y": 0.010094, "label": "unknown", "time_step": 31, "risk": 0.20411, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 230658273, "x": -0.425751, "y": 0.138207, "label": "unknown", "time_step": 1, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 14182114, "x": -1.0, "y": -0.52256, "label": "licit", "time_step": 39, "risk": 0.004023, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 230658274, "x": -0.422774, "y": 0.120884, "label": "unknown", "time_step": 1, "risk": 0.004532, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 1364199, "x": -0.140743, "y": 0.045472, "label": "unknown", "time_step": 41, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 230658281, "x": -0.275417, "y": 0.141015, "label": "unknown", "time_step": 1, "risk": 0.004239, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 128385258, "x": -0.582157, "y": 0.180662, "label": "unknown", "time_step": 49, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 355092714, "x": -0.010815, "y": -0.089171, "label": "illicit", "time_step": 32, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 148540140, "x": -0.235961, "y": 0.186953, "label": "unknown", "time_step": 39, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 382997228, "x": -0.599773, "y": 0.336392, "label": "unknown", "time_step": 31, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 382997230, "x": -0.663516, "y": -0.160276, "label": "unknown", "time_step": 31, "risk": 0.004239, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 382997232, "x": -0.283419, "y": -0.486346, "label": "unknown", "time_step": 31, "risk": 0.00433, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 203465969, "x": -0.188802, "y": 0.10899, "label": "unknown", "time_step": 1, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 120662258, "x": -0.349082, "y": -0.284972, "label": "licit", "time_step": 22, "risk": 0.004668, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 12665078, "x": -0.441281, "y": -0.365663, "label": "licit", "time_step": 41, "risk": 0.003393, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 157929208, "x": -0.2004, "y": -0.122632, "label": "licit", "time_step": 49, "risk": 0.28575, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 2881273, "x": -0.282759, "y": -0.060652, "label": "licit", "time_step": 1, "risk": 0.264948, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 279187194, "x": 0.461121, "y": 0.091009, "label": "licit", "time_step": 4, "risk": 0.356647, "in_degree": 7, "out_degree": 0, "top10": true}, {"id": 28468985, "x": -0.142859, "y": -0.271511, "label": "licit", "time_step": 44, "risk": 0.003393, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 90716926, "x": -0.755456, "y": -0.340368, "label": "licit", "time_step": 4, "risk": 0.286158, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 92638975, "x": -0.514581, "y": -0.153035, "label": "unknown", "time_step": 33, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 230464766, "x": -0.239402, "y": -0.11052, "label": "licit", "time_step": 1, "risk": 0.006797, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 225711361, "x": -0.231532, "y": 0.011791, "label": "unknown", "time_step": 5, "risk": 0.312174, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 43388675, "x": -0.171972, "y": 0.022336, "label": "licit", "time_step": 10, "risk": 0.5, "in_degree": 5, "out_degree": 0, "top10": true}, {"id": 269905668, "x": -0.192652, "y": 0.029767, "label": "illicit", "time_step": 25, "risk": 0.322836, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 219573507, "x": -0.353177, "y": 0.475103, "label": "unknown", "time_step": 47, "risk": 0.008735, "in_degree": 2, "out_degree": 0, "top10": false}, {"id": 94186757, "x": -0.464342, "y": -0.18709, "label": "unknown", "time_step": 7, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 224255757, "x": -0.507622, "y": -0.390129, "label": "unknown", "time_step": 5, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 46125838, "x": -0.300265, "y": -0.16824, "label": "unknown", "time_step": 4, "risk": 0.008343, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 3334419, "x": -0.343087, "y": -0.163439, "label": "unknown", "time_step": 48, "risk": 0.012389, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 399879957, "x": -0.353201, "y": -0.205644, "label": "licit", "time_step": 12, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 219384598, "x": -0.174511, "y": -0.392277, "label": "unknown", "time_step": 47, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 310235415, "x": -0.318694, "y": -0.308626, "label": "licit", "time_step": 22, "risk": 0.004668, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 121810199, "x": -0.422894, "y": -0.277938, "label": "unknown", "time_step": 6, "risk": 0.066977, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 3334422, "x": -0.322392, "y": -0.210383, "label": "unknown", "time_step": 48, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 106016540, "x": -0.153163, "y": -0.262518, "label": "unknown", "time_step": 44, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 46121245, "x": -0.018414, "y": 0.188964, "label": "unknown", "time_step": 4, "risk": 0.005547, "in_degree": 0, "out_degree": 3, "top10": false}, {"id": 1913117, "x": -0.188578, "y": 0.148297, "label": "licit", "time_step": 1, "risk": 0.005618, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 64998688, "x": -0.301558, "y": -0.352229, "label": "unknown", "time_step": 5, "risk": 0.004135, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 115298595, "x": -0.287424, "y": -0.204885, "label": "unknown", "time_step": 38, "risk": 0.004525, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 94340900, "x": -0.549109, "y": 0.232711, "label": "licit", "time_step": 43, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 148789030, "x": -0.22428, "y": 0.191361, "label": "unknown", "time_step": 39, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 94374185, "x": -0.331809, "y": -0.101984, "label": "unknown", "time_step": 7, "risk": 0.004239, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 99675945, "x": -0.392774, "y": -0.25796, "label": "unknown", "time_step": 21, "risk": 0.006239, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 99675435, "x": 0.008606, "y": 0.01876, "label": "illicit", "time_step": 21, "risk": 0.293907, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 5211953, "x": -0.014294, "y": 0.207463, "label": "unknown", "time_step": 4, "risk": 0.005405, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 372878642, "x": -0.245729, "y": -0.353049, "label": "licit", "time_step": 22, "risk": 0.00541, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 5003060, "x": -0.507267, "y": -0.491414, "label": "licit", "time_step": 43, "risk": 0.007378, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 43389237, "x": -0.208481, "y": -0.463735, "label": "unknown", "time_step": 10, "risk": 0.004605, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 12665141, "x": -0.487463, "y": -0.316727, "label": "licit", "time_step": 41, "risk": 0.003393, "in_degree": 0, "out_degree": 3, "top10": false}, {"id": 5678391, "x": -0.284816, "y": -0.172921, "label": "unknown", "time_step": 4, "risk": 0.008051, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 149691707, "x": -0.046593, "y": -0.759295, "label": "licit", "time_step": 39, "risk": 0.106703, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 331563323, "x": -0.261436, "y": -0.277702, "label": "unknown", "time_step": 23, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 149691712, "x": -0.040606, "y": -0.262363, "label": "licit", "time_step": 39, "risk": 0.255141, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 225712964, "x": -0.223777, "y": -0.475722, "label": "unknown", "time_step": 5, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 92538180, "x": -0.483823, "y": -0.200733, "label": "unknown", "time_step": 33, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 94185286, "x": -0.402284, "y": -0.420083, "label": "unknown", "time_step": 7, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 92538185, "x": -0.037857, "y": -0.397643, "label": "unknown", "time_step": 33, "risk": 0.004239, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 18918220, "x": 0.287094, "y": -0.311188, "label": "licit", "time_step": 47, "risk": 0.003497, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 30699343, "x": 0.019801, "y": -0.043465, "label": "licit", "time_step": 37, "risk": 0.444256, "in_degree": 6, "out_degree": 0, "top10": true}, {"id": 1404240, "x": -0.50729, "y": -0.491166, "label": "unknown", "time_step": 43, "risk": 0.007378, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 94325583, "x": -0.370064, "y": -0.47019, "label": "unknown", "time_step": 7, "risk": 0.009398, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 12665171, "x": -0.44679, "y": -0.360415, "label": "unknown", "time_step": 41, "risk": 0.003393, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 6292820, "x": 0.378244, "y": -0.561676, "label": "unknown", "time_step": 43, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 105811798, "x": 0.010264, "y": -0.363844, "label": "licit", "time_step": 44, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 49960790, "x": -0.13998, "y": -0.336754, "label": "licit", "time_step": 1, "risk": 0.00498, "in_degree": 2, "out_degree": 0, "top10": false}, {"id": 94621528, "x": 0.023029, "y": -0.181957, "label": "licit", "time_step": 7, "risk": 0.237818, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 73339227, "x": -0.025734, "y": -0.404546, "label": "licit", "time_step": 20, "risk": 0.003497, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 194381148, "x": -0.312643, "y": -0.301916, "label": "unknown", "time_step": 46, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 194381151, "x": 0.153934, "y": -0.44327, "label": "unknown", "time_step": 46, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 372750179, "x": -0.116263, "y": -0.39891, "label": "licit", "time_step": 22, "risk": 0.006544, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 12662969, "x": -0.487456, "y": -0.316739, "label": "licit", "time_step": 41, "risk": 0.003393, "in_degree": 0, "out_degree": 3, "top10": false}, {"id": 38598503, "x": -0.060905, "y": -0.507129, "label": "unknown", "time_step": 5, "risk": 0.003393, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 164169065, "x": -0.07532, "y": -0.593899, "label": "licit", "time_step": 49, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 149158766, "x": -0.723663, "y": -0.097007, "label": "licit", "time_step": 39, "risk": 0.279415, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 38688623, "x": -0.036367, "y": 0.093266, "label": "licit", "time_step": 47, "risk": 0.344456, "in_degree": 5, "out_degree": 5, "top10": true}, {"id": 331563183, "x": -0.362445, "y": -0.371291, "label": "unknown", "time_step": 23, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 43091826, "x": -0.083705, "y": -0.457086, "label": "unknown", "time_step": 10, "risk": 0.00898, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 2865010, "x": -0.15343, "y": -0.318153, "label": "licit", "time_step": 1, "risk": 0.007692, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 21420923, "x": 0.020761, "y": -0.042219, "label": "licit", "time_step": 37, "risk": 0.004786, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 12662651, "x": 0.102434, "y": -0.173276, "label": "unknown", "time_step": 41, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 196099966, "x": 0.028009, "y": -0.455808, "label": "unknown", "time_step": 46, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 355110272, "x": -0.012177, "y": -0.109577, "label": "illicit", "time_step": 32, "risk": 0.286643, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 13029248, "x": -0.038348, "y": -0.503829, "label": "licit", "time_step": 41, "risk": 0.004333, "in_degree": 2, "out_degree": 1, "top10": false}, {"id": 155821954, "x": 0.027767, "y": -0.526198, "label": "unknown", "time_step": 45, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 355110276, "x": 0.179904, "y": -0.557635, "label": "unknown", "time_step": 32, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 339066244, "x": -0.438709, "y": -0.410155, "label": "unknown", "time_step": 13, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 3335044, "x": 0.138633, "y": -0.477453, "label": "unknown", "time_step": 48, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 155821958, "x": -0.134422, "y": -0.172958, "label": "unknown", "time_step": 45, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 355008904, "x": 0.092912, "y": -0.117269, "label": "unknown", "time_step": 32, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 43391881, "x": -0.029244, "y": -0.443801, "label": "unknown", "time_step": 10, "risk": 0.005982, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 1411978, "x": 0.342343, "y": 0.06348, "label": "unknown", "time_step": 37, "risk": 0.003393, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 95850377, "x": -0.492547, "y": -0.491916, "label": "licit", "time_step": 39, "risk": 0.004842, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 17073545, "x": 0.377981, "y": -0.562038, "label": "unknown", "time_step": 43, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 3335050, "x": 0.208354, "y": -0.468689, "label": "unknown", "time_step": 48, "risk": 0.004394, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 73119118, "x": 0.056368, "y": -0.411113, "label": "unknown", "time_step": 1, "risk": 0.004135, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 155821959, "x": 0.110221, "y": -0.592966, "label": "unknown", "time_step": 45, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 331563189, "x": 0.296893, "y": -0.211753, "label": "unknown", "time_step": 23, "risk": 0.00433, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 43103633, "x": 0.317613, "y": -0.30085, "label": "licit", "time_step": 38, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 339066259, "x": -0.037047, "y": -0.683574, "label": "unknown", "time_step": 13, "risk": 0.004239, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 94339989, "x": 0.377932, "y": -0.562179, "label": "licit", "time_step": 43, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 105812373, "x": 0.133752, "y": -0.396394, "label": "licit", "time_step": 44, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 355174807, "x": 0.176867, "y": 0.362728, "label": "unknown", "time_step": 32, "risk": 0.272332, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 91934616, "x": -0.018275, "y": -0.165704, "label": "licit", "time_step": 43, "risk": 0.278377, "in_degree": 5, "out_degree": 5, "top10": false}, {"id": 339066265, "x": 0.444964, "y": -0.540941, "label": "unknown", "time_step": 13, "risk": 0.00433, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 3335063, "x": 0.309311, "y": -0.436803, "label": "unknown", "time_step": 48, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 155821976, "x": 0.047606, "y": -0.544615, "label": "unknown", "time_step": 45, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 112657309, "x": 0.337459, "y": -0.357176, "label": "unknown", "time_step": 46, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 230537117, "x": -0.159473, "y": -0.308977, "label": "unknown", "time_step": 1, "risk": 0.008536, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 96576418, "x": 0.108729, "y": -0.310045, "label": "licit", "time_step": 7, "risk": 0.4543, "in_degree": 5, "out_degree": 0, "top10": true}, {"id": 209720742, "x": 0.303562, "y": -0.244791, "label": "unknown", "time_step": 20, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 331547524, "x": 0.333057, "y": -0.294828, "label": "unknown", "time_step": 23, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 13932977, "x": 0.197567, "y": -0.319979, "label": "unknown", "time_step": 4, "risk": 0.005057, "in_degree": 0, "out_degree": 3, "top10": false}, {"id": 155821494, "x": 0.358355, "y": -0.16788, "label": "unknown", "time_step": 45, "risk": 0.218758, "in_degree": 5, "out_degree": 1, "top10": false}, {"id": 7014841, "x": 0.959622, "y": 0.188688, "label": "licit", "time_step": 39, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 372679610, "x": 0.338695, "y": -0.233147, "label": "unknown", "time_step": 22, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 395816891, "x": 0.302208, "y": -0.25523, "label": "unknown", "time_step": 12, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 12176316, "x": 0.188712, "y": -0.311615, "label": "unknown", "time_step": 4, "risk": 0.006782, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 24970172, "x": -0.112247, "y": -0.082593, "label": "unknown", "time_step": 36, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 32671677, "x": -0.112508, "y": -0.082484, "label": "unknown", "time_step": 36, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 96576449, "x": 0.536452, "y": -0.075953, "label": "unknown", "time_step": 7, "risk": 0.004239, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 119149506, "x": 0.404235, "y": -0.071654, "label": "unknown", "time_step": 20, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 157856713, "x": 0.27018, "y": -0.250087, "label": "licit", "time_step": 49, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 225102283, "x": 0.523437, "y": -0.220125, "label": "unknown", "time_step": 5, "risk": 0.00425, "in_degree": 2, "out_degree": 1, "top10": false}, {"id": 144222669, "x": 0.785164, "y": 0.087098, "label": "unknown", "time_step": 45, "risk": 0.096362, "in_degree": 1, "out_degree": 0, "top10": false}, {"id": 28836304, "x": 0.435668, "y": -0.298213, "label": "unknown", "time_step": 37, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 9376210, "x": 0.3127, "y": -0.289156, "label": "licit", "time_step": 38, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 92605395, "x": 0.328426, "y": -0.162884, "label": "unknown", "time_step": 33, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 12799956, "x": 0.41584, "y": -0.192991, "label": "unknown", "time_step": 41, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 382917586, "x": 0.23617, "y": -0.162693, "label": "unknown", "time_step": 31, "risk": 0.004029, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 2984918, "x": -0.024119, "y": 0.080595, "label": "licit", "time_step": 22, "risk": 0.352215, "in_degree": 1, "out_degree": 5, "top10": true}, {"id": 196089817, "x": 0.487298, "y": -0.169574, "label": "unknown", "time_step": 46, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 12806113, "x": 0.287608, "y": 0.277322, "label": "licit", "time_step": 41, "risk": 0.224362, "in_degree": 5, "out_degree": 0, "top10": false}, {"id": 225859042, "x": 0.071162, "y": -0.037958, "label": "unknown", "time_step": 5, "risk": 0.397824, "in_degree": 5, "out_degree": 0, "top10": true}, {"id": 339066850, "x": 0.627068, "y": -0.072436, "label": "unknown", "time_step": 13, "risk": 0.004366, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 339066852, "x": 0.387919, "y": 0.350501, "label": "unknown", "time_step": 13, "risk": 0.004385, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 105843171, "x": 0.117049, "y": -0.393719, "label": "licit", "time_step": 44, "risk": 0.002652, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 22226403, "x": 0.37919, "y": -0.133057, "label": "licit", "time_step": 20, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 269236711, "x": 0.294796, "y": 0.019642, "label": "unknown", "time_step": 25, "risk": 0.004239, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 355110888, "x": 0.472194, "y": -0.164198, "label": "unknown", "time_step": 32, "risk": 0.004029, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 11106276, "x": 0.402022, "y": -0.118827, "label": "licit", "time_step": 37, "risk": 0.00491, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 92048876, "x": 0.376627, "y": -0.563177, "label": "licit", "time_step": 43, "risk": 0.00191, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 355110893, "x": 0.474897, "y": -0.128406, "label": "unknown", "time_step": 32, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 28836337, "x": 0.504918, "y": 0.006471, "label": "unknown", "time_step": 37, "risk": 0.004029, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 219384819, "x": 0.283806, "y": -0.312962, "label": "unknown", "time_step": 47, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 30179316, "x": 0.596691, "y": -0.351926, "label": "illicit", "time_step": 37, "risk": 0.323533, "in_degree": 6, "out_degree": 0, "top10": false}, {"id": 346170869, "x": 0.365206, "y": -0.196309, "label": "unknown", "time_step": 12, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}, {"id": 19601398, "x": -0.18266, "y": -0.274752, "label": "licit", "time_step": 38, "risk": 0.00498, "in_degree": 1, "out_degree": 2, "top10": false}, {"id": 346170872, "x": 0.464923, "y": 0.280805, "label": "unknown", "time_step": 12, "risk": 0.003287, "in_degree": 1, "out_degree": 1, "top10": false}, {"id": 230427132, "x": -0.188282, "y": 0.151563, "label": "unknown", "time_step": 1, "risk": 0.003287, "in_degree": 0, "out_degree": 1, "top10": false}, {"id": 121540095, "x": 0.432303, "y": 0.156139, "label": "unknown", "time_step": 6, "risk": 0.002652, "in_degree": 0, "out_degree": 2, "top10": false}];
+const EDGES = [{"source": 7658496, "target": 89273}, {"source": 7014913, "target": 91400373}, {"source": 7014913, "target": 149569098}, {"source": 121540098, "target": 121654821}, {"source": 14586371, "target": 22837784}, {"source": 14586371, "target": 90716926}, {"source": 30179335, "target": 30179316}, {"source": 30179335, "target": 30276715}, {"source": 30179335, "target": 30699343}, {"source": 115154951, "target": 6930625}, {"source": 115154951, "target": 149691712}, {"source": 7965704, "target": 149569098}, {"source": 30179348, "target": 30179316}, {"source": 43093013, "target": 43388675}, {"source": 43093013, "target": 43397277}, {"source": 68456983, "target": 68705820}, {"source": 68456983, "target": 68706499}, {"source": 224210974, "target": 224210605}, {"source": 224210974, "target": 225711361}, {"source": 30179361, "target": 30179316}, {"source": 224210977, "target": 224210605}, {"source": 224210977, "target": 225711361}, {"source": 121654821, "target": 121801433}, {"source": 121654821, "target": 121810199}, {"source": 106320422, "target": 106319919}, {"source": 12284459, "target": 95850377}, {"source": 12284459, "target": 149158766}, {"source": 12284459, "target": 149569098}, {"source": 2240556, "target": 90716926}, {"source": 28808235, "target": 30151745}, {"source": 28808235, "target": 30179316}, {"source": 28808235, "target": 30276715}, {"source": 30179375, "target": 30179316}, {"source": 3807285, "target": 90716926}, {"source": 94372918, "target": 94374185}, {"source": 94372918, "target": 96576418}, {"source": 355008569, "target": 355174807}, {"source": 63375421, "target": 68705820}, {"source": 63375421, "target": 68706499}, {"source": 67964989, "target": 68705820}, {"source": 67964989, "target": 68706499}, {"source": 30151745, "target": 30276715}, {"source": 35171908, "target": 225102283}, {"source": 35171908, "target": 225859042}, {"source": 234890821, "target": 234890810}, {"source": 30179395, "target": 30179316}, {"source": 58495048, "target": 225102283}, {"source": 58495048, "target": 225859042}, {"source": 208537161, "target": 232438397}, {"source": 49220170, "target": 68705820}, {"source": 49220170, "target": 68706499}, {"source": 355008589, "target": 355174807}, {"source": 2228301, "target": 2240556}, {"source": 2228301, "target": 22837784}, {"source": 2228301, "target": 22837965}, {"source": 355012175, "target": 355110272}, {"source": 355012175, "target": 355110888}, {"source": 268964432, "target": 268996244}, {"source": 268964432, "target": 269905668}, {"source": 121492562, "target": 121654821}, {"source": 234890837, "target": 234890810}, {"source": 234890837, "target": 234890841}, {"source": 355110999, "target": 355110272}, {"source": 234890841, "target": 234890810}, {"source": 234890841, "target": 234890847}, {"source": 355008601, "target": 355174807}, {"source": 15244375, "target": 22837965}, {"source": 15244375, "target": 279187194}, {"source": 234890847, "target": 234890810}, {"source": 234890847, "target": 234890854}, {"source": 106651741, "target": 2984918}, {"source": 106651741, "target": 314950723}, {"source": 209488479, "target": 209837677}, {"source": 234890854, "target": 234890810}, {"source": 28836458, "target": 30699343}, {"source": 1050220, "target": 232438397}, {"source": 7834222, "target": 38688623}, {"source": 7834222, "target": 218285685}, {"source": 7834222, "target": 219573507}, {"source": 149843562, "target": 36864715}, {"source": 149843562, "target": 157929208}, {"source": 230658155, "target": 230658142}, {"source": 372691574, "target": 372691580}, {"source": 372691574, "target": 372745794}, {"source": 10773622, "target": 149691712}, {"source": 372691580, "target": 372691583}, {"source": 372691580, "target": 372745794}, {"source": 232438397, "target": 92491280}, {"source": 96580735, "target": 96576418}, {"source": 96580735, "target": 96576449}, {"source": 230530176, "target": 2881273}, {"source": 372691583, "target": 372745794}, {"source": 230658174, "target": 230658142}, {"source": 230658174, "target": 230658281}, {"source": 99676293, "target": 99675435}, {"source": 269236358, "target": 269236711}, {"source": 269236358, "target": 269905668}, {"source": 99676297, "target": 99675435}, {"source": 99676297, "target": 99676304}, {"source": 230530189, "target": 2881273}, {"source": 12780176, "target": 12780133}, {"source": 99676304, "target": 99675435}, {"source": 94227091, "target": 18918220}, {"source": 94227091, "target": 38688623}, {"source": 268996244, "target": 268996252}, {"source": 268996244, "target": 269905668}, {"source": 24092310, "target": 30276715}, {"source": 24092310, "target": 30699343}, {"source": 121540247, "target": 121540249}, {"source": 121540247, "target": 121654821}, {"source": 121540249, "target": 121654821}, {"source": 230530202, "target": 2881273}, {"source": 268996252, "target": 269905668}, {"source": 99675805, "target": 99675435}, {"source": 99675805, "target": 99675945}, {"source": 21498012, "target": 30151745}, {"source": 21498012, "target": 30699343}, {"source": 94187168, "target": 94621528}, {"source": 155650212, "target": 155821494}, {"source": 200653992, "target": 70245040}, {"source": 217665704, "target": 70245040}, {"source": 224210605, "target": 225711361}, {"source": 70245040, "target": 45555339}, {"source": 43390127, "target": 43388675}, {"source": 43390127, "target": 43397277}, {"source": 1377967, "target": 279187194}, {"source": 94609074, "target": 94621528}, {"source": 12665008, "target": 12806113}, {"source": 91400373, "target": 12284459}, {"source": 91400373, "target": 149569098}, {"source": 3097782, "target": 3807285}, {"source": 3097782, "target": 279187194}, {"source": 230530231, "target": 2881273}, {"source": 18059446, "target": 70245040}, {"source": 89273, "target": 2865010}, {"source": 89273, "target": 49960790}, {"source": 89273, "target": 230464766}, {"source": 89273, "target": 230537117}, {"source": 89273, "target": 232910950}, {"source": 4893367, "target": 12806113}, {"source": 331563186, "target": 331563189}, {"source": 331563186, "target": 332771446}, {"source": 149158077, "target": 149158766}, {"source": 17997502, "target": 149691712}, {"source": 92549311, "target": 96365231}, {"source": 345837244, "target": 347550863}, {"source": 6930625, "target": 149158766}, {"source": 372690625, "target": 372745794}, {"source": 36864715, "target": 157929208}, {"source": 22837965, "target": 22837790}, {"source": 60146895, "target": 68705820}, {"source": 60146895, "target": 68706499}, {"source": 115936466, "target": 116898498}, {"source": 382951636, "target": 382997214}, {"source": 13964502, "target": 22837965}, {"source": 94452952, "target": 96576418}, {"source": 230658273, "target": 230658142}, {"source": 14182114, "target": 149158766}, {"source": 230658274, "target": 230658142}, {"source": 1364199, "target": 12806113}, {"source": 230658281, "target": 230658142}, {"source": 230658281, "target": 230658155}, {"source": 128385258, "target": 157929208}, {"source": 355092714, "target": 355174807}, {"source": 148540140, "target": 149691712}, {"source": 382997228, "target": 382997214}, {"source": 382997228, "target": 382997230}, {"source": 382997230, "target": 382997214}, {"source": 382997230, "target": 382997232}, {"source": 382997232, "target": 382997214}, {"source": 203465969, "target": 232438397}, {"source": 12665078, "target": 12665008}, {"source": 12665078, "target": 12780176}, {"source": 28468985, "target": 106320422}, {"source": 92638975, "target": 96365231}, {"source": 94186757, "target": 94621528}, {"source": 224255757, "target": 225711361}, {"source": 46125838, "target": 22837784}, {"source": 46125838, "target": 90716926}, {"source": 3334419, "target": 2268197}, {"source": 399879957, "target": 345837244}, {"source": 399879957, "target": 347550863}, {"source": 219384598, "target": 38688623}, {"source": 219384598, "target": 219384819}, {"source": 3334422, "target": 2268197}, {"source": 106016540, "target": 106320422}, {"source": 46121245, "target": 22837784}, {"source": 46121245, "target": 22837965}, {"source": 46121245, "target": 279187194}, {"source": 1913117, "target": 49960790}, {"source": 1913117, "target": 232438397}, {"source": 64998688, "target": 225859042}, {"source": 115298595, "target": 116898498}, {"source": 94340900, "target": 91934616}, {"source": 148789030, "target": 149691712}, {"source": 94374185, "target": 96576418}, {"source": 99675945, "target": 99675435}, {"source": 5211953, "target": 22837784}, {"source": 5211953, "target": 279187194}, {"source": 43389237, "target": 43388675}, {"source": 43389237, "target": 43397277}, {"source": 12665141, "target": 12665008}, {"source": 12665141, "target": 12780176}, {"source": 12665141, "target": 13029248}, {"source": 5678391, "target": 22837784}, {"source": 5678391, "target": 90716926}, {"source": 331563323, "target": 332771446}, {"source": 149691712, "target": 149691707}, {"source": 225712964, "target": 225711361}, {"source": 92538180, "target": 92538185}, {"source": 92538180, "target": 96365231}, {"source": 94185286, "target": 94621528}, {"source": 92538185, "target": 96365231}, {"source": 18918220, "target": 38688623}, {"source": 94325583, "target": 94621528}, {"source": 12665171, "target": 12665008}, {"source": 12665171, "target": 12780176}, {"source": 6292820, "target": 91934616}, {"source": 105811798, "target": 106320422}, {"source": 73339227, "target": 209837677}, {"source": 194381148, "target": 194381151}, {"source": 194381148, "target": 196107869}, {"source": 194381151, "target": 196107869}, {"source": 12662969, "target": 12665008}, {"source": 12662969, "target": 12780176}, {"source": 12662969, "target": 13029248}, {"source": 38598503, "target": 225859042}, {"source": 164169065, "target": 157929208}, {"source": 38688623, "target": 16921725}, {"source": 38688623, "target": 36364435}, {"source": 38688623, "target": 218285685}, {"source": 38688623, "target": 218295883}, {"source": 38688623, "target": 219573507}, {"source": 331563183, "target": 331563186}, {"source": 331563183, "target": 332771446}, {"source": 43091826, "target": 43388675}, {"source": 43091826, "target": 43397277}, {"source": 21420923, "target": 30151745}, {"source": 21420923, "target": 30276715}, {"source": 12662651, "target": 12806113}, {"source": 196099966, "target": 196107869}, {"source": 13029248, "target": 12780176}, {"source": 155821954, "target": 155821494}, {"source": 355110276, "target": 355110272}, {"source": 339066244, "target": 339066259}, {"source": 339066244, "target": 339175100}, {"source": 3335044, "target": 2268197}, {"source": 155821958, "target": 155821494}, {"source": 355008904, "target": 355174807}, {"source": 43391881, "target": 43388675}, {"source": 43391881, "target": 43397277}, {"source": 1411978, "target": 30151745}, {"source": 1411978, "target": 30276715}, {"source": 95850377, "target": 14182114}, {"source": 95850377, "target": 149158766}, {"source": 17073545, "target": 91934616}, {"source": 3335050, "target": 2268197}, {"source": 73119118, "target": 2881273}, {"source": 155821959, "target": 155821494}, {"source": 155821959, "target": 155821958}, {"source": 331563189, "target": 332771446}, {"source": 43103633, "target": 19601398}, {"source": 43103633, "target": 116898498}, {"source": 339066259, "target": 339066265}, {"source": 339066259, "target": 339175100}, {"source": 94339989, "target": 91934616}, {"source": 105812373, "target": 106320422}, {"source": 355174807, "target": 355176021}, {"source": 91934616, "target": 1404240}, {"source": 91934616, "target": 4672600}, {"source": 91934616, "target": 5003060}, {"source": 91934616, "target": 15449100}, {"source": 91934616, "target": 31741064}, {"source": 339066265, "target": 339066850}, {"source": 339066265, "target": 339175100}, {"source": 3335063, "target": 2268197}, {"source": 155821976, "target": 155821494}, {"source": 112657309, "target": 196107869}, {"source": 209720742, "target": 209837677}, {"source": 331547524, "target": 332771446}, {"source": 13932977, "target": 5678391}, {"source": 13932977, "target": 22837965}, {"source": 13932977, "target": 279187194}, {"source": 155821494, "target": 144222669}, {"source": 7014841, "target": 7014913}, {"source": 7014841, "target": 149569098}, {"source": 372679610, "target": 372745794}, {"source": 395816891, "target": 347550863}, {"source": 12176316, "target": 3807285}, {"source": 12176316, "target": 279187194}, {"source": 24970172, "target": 70245040}, {"source": 32671677, "target": 70245040}, {"source": 96576449, "target": 96576418}, {"source": 119149506, "target": 209488479}, {"source": 119149506, "target": 209837677}, {"source": 157856713, "target": 157929208}, {"source": 157856713, "target": 164169065}, {"source": 225102283, "target": 225859042}, {"source": 28836304, "target": 30699343}, {"source": 9376210, "target": 116898498}, {"source": 92605395, "target": 96365231}, {"source": 12799956, "target": 12806113}, {"source": 382917586, "target": 382997214}, {"source": 2984918, "target": 120662258}, {"source": 2984918, "target": 310235415}, {"source": 2984918, "target": 314950723}, {"source": 2984918, "target": 372750179}, {"source": 2984918, "target": 372878642}, {"source": 196089817, "target": 196107869}, {"source": 339066850, "target": 339066852}, {"source": 339066850, "target": 339175100}, {"source": 339066852, "target": 339175100}, {"source": 105843171, "target": 106320422}, {"source": 22226403, "target": 73339227}, {"source": 22226403, "target": 209837677}, {"source": 269236711, "target": 269905668}, {"source": 355110888, "target": 355110272}, {"source": 11106276, "target": 21420923}, {"source": 11106276, "target": 30151745}, {"source": 92048876, "target": 91934616}, {"source": 355110893, "target": 355110272}, {"source": 355110893, "target": 355110999}, {"source": 28836337, "target": 28836458}, {"source": 28836337, "target": 30699343}, {"source": 219384819, "target": 38688623}, {"source": 346170869, "target": 346170872}, {"source": 346170869, "target": 347550863}, {"source": 19601398, "target": 115936466}, {"source": 19601398, "target": 116898498}, {"source": 346170872, "target": 347550863}, {"source": 230427132, "target": 232438397}, {"source": 121540095, "target": 121540098}, {"source": 121540095, "target": 121654821}];
+const TOP20 = [{"rank": 1, "txId": 43388675, "risk_score": 0.5, "label": "licit", "in_degree": 284, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.013800273452086929}, {"rank": 2, "txId": 96576418, "risk_score": 0.4543001469644642, "label": "licit", "in_degree": 239, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.013464254624630216}, {"rank": 3, "txId": 30699343, "risk_score": 0.4442560782535353, "label": "licit", "in_degree": 241, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.012812626021190274}, {"rank": 4, "txId": 68705820, "risk_score": 0.439901646046264, "label": "licit", "in_degree": 247, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.012280701527503185}, {"rank": 5, "txId": 225859042, "risk_score": 0.39782411102666104, "label": "unknown", "in_degree": 212, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.011658713495095292}, {"rank": 6, "txId": 234890810, "risk_score": 0.36976109333028695, "label": "unknown", "in_degree": 199, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.01074130688071049}, {"rank": 7, "txId": 279187194, "risk_score": 0.35664718406021895, "label": "licit", "in_degree": 211, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.009434294599036476}, {"rank": 8, "txId": 2984918, "risk_score": 0.35221468573200077, "label": "licit", "in_degree": 1, "out_degree": 472, "betweenness": 0.0, "pagerank": 7.366056269294719e-05}, {"rank": 9, "txId": 196107869, "risk_score": 0.3520509800716707, "label": "licit", "in_degree": 188, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.01029820689107274}, {"rank": 10, "txId": 38688623, "risk_score": 0.34445557130078297, "label": "licit", "in_degree": 98, "out_degree": 15, "betweenness": 3.1175957101883024e-05, "pagerank": 0.005358098824569341}, {"rank": 11, "txId": 30276715, "risk_score": 0.33397191666866805, "label": "licit", "in_degree": 129, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.01216718103335543}, {"rank": 12, "txId": 30179316, "risk_score": 0.32353278135587094, "label": "illicit", "in_degree": 177, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.009258488762224371}, {"rank": 13, "txId": 269905668, "risk_score": 0.32283641995031165, "label": "illicit", "in_degree": 173, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.009414418899572521}, {"rank": 14, "txId": 121654821, "risk_score": 0.32249321754674265, "label": "unknown", "in_degree": 154, "out_degree": 2, "betweenness": 6.650870848401712e-06, "pagerank": 0.008470430451627153}, {"rank": 15, "txId": 43397277, "risk_score": 0.3134400360701307, "label": "licit", "in_degree": 182, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.008458395622146286}, {"rank": 16, "txId": 232438397, "risk_score": 0.31236477359533976, "label": "licit", "in_degree": 160, "out_degree": 1, "betweenness": 2.4940765681506424e-06, "pagerank": 0.008764729084645238}, {"rank": 17, "txId": 225711361, "risk_score": 0.31217396000202524, "label": "unknown", "in_degree": 167, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.009117394520670827}, {"rank": 18, "txId": 68706499, "risk_score": 0.30881883438988333, "label": "licit", "in_degree": 178, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.008397670283308598}, {"rank": 19, "txId": 96365231, "risk_score": 0.30875758319652846, "label": "illicit", "in_degree": 166, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.008977399296301173}, {"rank": 20, "txId": 99675435, "risk_score": 0.2939067562243859, "label": "illicit", "in_degree": 158, "out_degree": 0, "betweenness": 0.0, "pagerank": 0.008546357500722275}];
+const TS_DATA = [{"time_step": 1, "illicit": 17, "licit": 2130, "unknown": 5733}, {"time_step": 2, "illicit": 18, "licit": 1099, "unknown": 3427}, {"time_step": 3, "illicit": 11, "licit": 1268, "unknown": 5342}, {"time_step": 4, "illicit": 30, "licit": 1410, "unknown": 4253}, {"time_step": 5, "illicit": 8, "licit": 1874, "unknown": 4921}, {"time_step": 6, "illicit": 5, "licit": 480, "unknown": 3843}, {"time_step": 7, "illicit": 102, "licit": 1101, "unknown": 4845}, {"time_step": 8, "illicit": 67, "licit": 1098, "unknown": 3292}, {"time_step": 9, "illicit": 248, "licit": 530, "unknown": 4218}, {"time_step": 10, "illicit": 18, "licit": 954, "unknown": 5755}, {"time_step": 11, "illicit": 131, "licit": 565, "unknown": 3600}, {"time_step": 12, "illicit": 16, "licit": 490, "unknown": 1541}, {"time_step": 13, "illicit": 291, "licit": 518, "unknown": 3719}, {"time_step": 14, "illicit": 43, "licit": 374, "unknown": 1605}, {"time_step": 15, "illicit": 147, "licit": 471, "unknown": 3021}, {"time_step": 16, "illicit": 128, "licit": 402, "unknown": 2445}, {"time_step": 17, "illicit": 99, "licit": 712, "unknown": 2574}, {"time_step": 18, "illicit": 52, "licit": 337, "unknown": 1587}, {"time_step": 19, "illicit": 80, "licit": 665, "unknown": 2761}, {"time_step": 20, "illicit": 260, "licit": 640, "unknown": 3391}, {"time_step": 21, "illicit": 100, "licit": 541, "unknown": 2896}, {"time_step": 22, "illicit": 158, "licit": 1605, "unknown": 4131}, {"time_step": 23, "illicit": 53, "licit": 1134, "unknown": 2978}, {"time_step": 24, "illicit": 137, "licit": 989, "unknown": 3466}, {"time_step": 25, "illicit": 118, "licit": 476, "unknown": 1720}, {"time_step": 26, "illicit": 96, "licit": 421, "unknown": 2006}, {"time_step": 27, "illicit": 24, "licit": 182, "unknown": 883}, {"time_step": 28, "illicit": 85, "licit": 199, "unknown": 1369}, {"time_step": 29, "illicit": 329, "licit": 845, "unknown": 3101}, {"time_step": 30, "illicit": 83, "licit": 441, "unknown": 1959}, {"time_step": 31, "illicit": 106, "licit": 604, "unknown": 2106}, {"time_step": 32, "illicit": 342, "licit": 981, "unknown": 3202}, {"time_step": 33, "illicit": 23, "licit": 418, "unknown": 2710}, {"time_step": 34, "illicit": 37, "licit": 478, "unknown": 1971}, {"time_step": 35, "illicit": 182, "licit": 1159, "unknown": 4166}, {"time_step": 36, "illicit": 33, "licit": 1675, "unknown": 4685}, {"time_step": 37, "illicit": 40, "licit": 458, "unknown": 2808}, {"time_step": 38, "illicit": 111, "licit": 645, "unknown": 2135}, {"time_step": 39, "illicit": 81, "licit": 1102, "unknown": 1577}, {"time_step": 40, "illicit": 112, "licit": 1099, "unknown": 3270}, {"time_step": 41, "illicit": 116, "licit": 1016, "unknown": 4210}, {"time_step": 42, "illicit": 239, "licit": 1915, "unknown": 4986}, {"time_step": 43, "illicit": 24, "licit": 1346, "unknown": 3693}, {"time_step": 44, "illicit": 24, "licit": 1567, "unknown": 3384}, {"time_step": 45, "illicit": 5, "licit": 1216, "unknown": 4377}, {"time_step": 46, "illicit": 2, "licit": 710, "unknown": 2807}, {"time_step": 47, "illicit": 22, "licit": 824, "unknown": 4275}, {"time_step": 48, "illicit": 36, "licit": 435, "unknown": 2483}, {"time_step": 49, "illicit": 56, "licit": 420, "unknown": 1978}];
+
+let currentFilter = 'all';
+
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
+function nodeColor(d) {
+
+    if (d.top10) return '#f1c40f';
+
+    if (d.label === 'illicit') return '#e74c3c';
+
+    if (d.label === 'licit') return '#27ae60';
+
+    return '#95a5a6';
+}
+
+// ============================================================
+// D3 NETWORK GRAPH
+// ============================================================
+
+const svg = d3.select('#network-svg');
+
+const WIDTH = document.getElementById('network-svg').clientWidth || 700;
+
+const HEIGHT = 450;
+
+const xScale = d3.scaleLinear()
+    .domain([
+        d3.min(NODES, d => d.x),
+        d3.max(NODES, d => d.x)
+    ])
+    .range([80, WIDTH - 80]);
+
+const yScale = d3.scaleLinear()
+    .domain([
+        d3.min(NODES, d => d.y),
+        d3.max(NODES, d => d.y)
+    ])
+    .range([80, HEIGHT - 80]);
+
+const nodeMap = {};
+
+NODES.forEach(n => {
+    nodeMap[n.id] = n;
+});
+
+const g = svg.append('g');
+
+svg.call(
+    d3.zoom()
+      .scaleExtent([0.3, 5])
+      .on('zoom', (event) => {
+          g.attr('transform', event.transform);
+      })
+);
+
+const edgeGroup = g.append('g');
+
+const edgeSel = edgeGroup
+    .selectAll('line')
+    .data(EDGES)
+    .join('line')
+    .attr('x1', d => xScale(nodeMap[d.source].x))
+    .attr('y1', d => yScale(nodeMap[d.source].y))
+    .attr('x2', d => xScale(nodeMap[d.target].x))
+    .attr('y2', d => yScale(nodeMap[d.target].y))
+    .attr('stroke', 'rgba(255,255,255,0.1)')
+    .attr('stroke-width', 0.8);
+
+const nodeGroup = g.append('g');
+
+const tooltip = d3.select('body')
+    .append('div')
+    .style('position', 'absolute')
+    .style('display', 'none')
+    .style('background', '#1f1f4a')
+    .style('padding', '8px 12px')
+    .style('border-radius', '6px')
+    .style('font-size', '0.8em')
+    .style('border', '1px solid #4a3fa0')
+    .style('pointer-events', 'none');
+
+const nodeSel = nodeGroup
+    .selectAll('circle')
+    .data(NODES)
+    .join('circle')
+
+    .attr('cx', d => xScale(d.x))
+    .attr('cy', d => yScale(d.y))
+
+    .attr('r', d => d.top10 ? 9 : 5)
+
+    .attr('fill', d => nodeColor(d))
+
+    .attr('stroke', d => d.top10 ? 'white' : 'none')
+
+    .attr('stroke-width', d => d.top10 ? 1.5 : 0)
+
+    .style('cursor', 'pointer')
+
+    .on('mouseover', function(event, d) {
+
+        d3.select(this)
+          .attr('r', d.top10 ? 13 : 8);
+
+        tooltip
+            .style('display', 'block')
+
+
+            .html(
+                `<b>Transaction:</b> ${d.id}<br>
+                 <b>Class:</b> ${d.label}<br>
+                 <b>Risk Score:</b> ${d.risk}<br>
+                 <b>In Degree:</b> ${d.in_degree}<br>
+                 <b>Out Degree:</b> ${d.out_degree}<br>
+                 <b>Time Step:</b> ${d.time_step}`
+            );
+    })
+
+    .on('mousemove', function(event) {
+
+        tooltip
+            .style('left', (event.pageX + 12) + 'px')
+            .style('top', (event.pageY - 20) + 'px');
+    })
+
+    .on('mouseout', function(event, d) {
+
+        d3.select(this)
+          .attr('r', d.top10 ? 9 : 5);
+
+        tooltip.style('display', 'none');
+    });
+// ============================================================
+// LABEL TOP 10 RISK NODES
+// ============================================================
+
+g.selectAll('text')
+ .data(NODES.filter(d => d.top10))
+ .join('text')
+
+ .attr('x', d => xScale(d.x) + 10)
+
+ .attr('y', d => yScale(d.y) + 4)
+
+ .text(d => d.id)
+
+ .attr('fill', '#ffffff')
+
+ .attr('font-size', '10px')
+
+ .attr('font-family', 'monospace');
+// ============================================================
+// TABLE
+// ============================================================
+
+function renderTable(filter) {
+
+    const tbody = document.getElementById('table-body');
+
+    tbody.innerHTML = '';
+
+    const rows = filter === 'all'
+        ? TOP20
+        : TOP20.filter(r => r.label === filter);
+
+    rows.forEach((r, i) => {
+
+        const barWidth = Math.round(r.risk_score * 100);
+
+        tbody.innerHTML += `
+        <tr>
+
+            <td>${i+1}</td>
+
+            <td style="font-family:monospace">
+                ${r.txId}
+            </td>
+
+            <td>
+                <span class="badge ${r.label}">
+                    ${r.label}
+                </span>
+            </td>
+
+            <td>${r.in_degree}</td>
+
+            <td>${r.out_degree}</td>
+
+            <td>${r.betweenness.toFixed(6)}</td>
+
+            <td>${r.pagerank.toFixed(6)}</td>
+
+            <td>
+
+                <div style="display:flex;align-items:center;gap:6px">
+
+                    <div class="risk-bar"
+                         style="width:${barWidth}px"></div>
+
+                    <span>${r.risk_score.toFixed(4)}</span>
+
+                </div>
+
+            </td>
+
+        </tr>`;
+    });
+}
+
+renderTable('all');
+
+// ============================================================
+// PLOTLY TIME SERIES
+// ============================================================
+
+function renderTimeChart(filter) {
+
+    const steps = TS_DATA.map(d => d.time_step);
+
+    const traces = [];
+
+    const classes = ['illicit', 'licit', 'unknown'];
+
+    const colors = {
+        'illicit': '#e74c3c',
+        'licit': '#27ae60',
+        'unknown': '#636e72'
+    };
+
+    classes.forEach(cls => {
+
+        if (filter !== 'all' && filter !== cls) return;
+
+        const trace = {
+            x: steps,
+            y: TS_DATA.map(d => d[cls] || 0),
+            name: cls,
+            type: 'scatter',
+            mode: 'lines',
+            line: {
+                color: colors[cls],
+                width: cls === 'illicit' ? 3 : 2
+            }
+        };
+
+        if (cls === 'illicit') {
+            trace.fill = 'tozeroy';
+            trace.fillcolor = 'rgba(231,76,60,0.25)';
+        }
+
+        traces.push(trace);
+    });
+
+    const layout = {
+
+        paper_bgcolor: '#161630',
+
+        plot_bgcolor: '#0f0f23',
+
+        font: {
+            color: '#e0e0e0'
+        },
+
+        xaxis: {
+            title: 'Time Step',
+            gridcolor: '#2a2a5a'
+        },
+
+        yaxis: {
+            title: 'Transaction Count',
+            gridcolor: '#2a2a5a'
+        },
+
+        margin: {
+            t: 20,
+            l: 50,
+            r: 20,
+            b: 50
+        }
+    };
+
+    Plotly.react(
+        'timechart',
+        traces,
+        layout,
+        { responsive: true }
+    );
+}
+
+renderTimeChart('all');
+
+// ============================================================
+// FILTER LOGIC
+// ============================================================
+
+function applyFilter(f) {
+
+    currentFilter = f;
+
+    document.querySelectorAll('.filter-btn')
+        .forEach(btn => btn.classList.remove('active'));
+
+    document.querySelector(`.filter-btn.${f}`)
+        .classList.add('active');
+
+    nodeSel.attr(
+        'opacity',
+        d => (f === 'all' || d.label === f) ? 1 : 0.1
+    );
+
+    edgeSel.attr('opacity', d => {
+
+        if (f === 'all') return 0.3;
+
+        const s = nodeMap[d.source];
+
+        const t = nodeMap[d.target];
+
+        return (
+            s.label === f ||
+            t.label === f
+        ) ? 0.5 : 0.05;
+    });
+
+    renderTable(f);
+
+    renderTimeChart(f);
+}
+
+</script>
+
+</body>
+</html>
