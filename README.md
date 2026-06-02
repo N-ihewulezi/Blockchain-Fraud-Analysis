@@ -15,7 +15,12 @@ identify structural hubs, detect suspicious flow patterns, and produce a
 defensible compliance report.
 
 ---
+![Python](https://img.shields.io/badge/Python-3.10-blue?style=flat-square)
+![NetworkX](https://img.shields.io/badge/NetworkX-Graph%20Analysis-orange?style=flat-square)
+![Plotly](https://img.shields.io/badge/Plotly-Interactive%20Charts-purple?style=flat-square)
+[![Live Dashboard](https://img.shields.io/badge/Dashboard-Live%20Demo-FFD700?style=flat-square)]([YOUR_PAGES_URL](https://n-ihewulezi.github.io/Blockchain-Fraud-Analysis/Dashboard/blockchain_fraud_dashboard.html)
 
+---
 ## Key Findings
 
 | Finding | Detail |
@@ -47,8 +52,8 @@ Red = illicit · Green = licit · Grey = unknown*
 
 ![Dashboard](visuals/dashboard_preview.png)
 
-**[View Interactive Dashboard](dashboard/blockchain_fraud_dashboard.html)**  
-*(Download and open in any browser — no server required)*
+**[View Interactive Dashboard][(dashboard/blockchain_fraud_dashboard.html)*](https://n-ihewulezi.github.io/Blockchain-Fraud-Analysis/Dashboard/blockchain_fraud_dashboard.html)*  
+
 
 ---
 
