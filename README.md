@@ -52,7 +52,7 @@ Red = illicit · Green = licit · Grey = unknown*
 
 ![Dashboard](visuals/dashboard_preview.png)
 
-**[View Interactive Dashboard][(dashboard/blockchain_fraud_dashboard.html)*](https://n-ihewulezi.github.io/Blockchain-Fraud-Analysis/Dashboard/blockchain_fraud_dashboard.html)*  
+**[View Interactive Dashboard][(dashboard/blockchain_fraud_dashboard.html)**](https://n-ihewulezi.github.io/Blockchain-Fraud-Analysis/Dashboard/blockchain_fraud_dashboard.html) 
 
 
 ---
