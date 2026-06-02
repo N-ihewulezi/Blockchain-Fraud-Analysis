@@ -39,6 +39,8 @@ defensible compliance report.
 *Gold nodes = top 10 by composite risk score · 
 Red = illicit · Green = licit · Grey = unknown*
 
+![Interactive Network Graph Demo]
+
 ---
 
 ## Dashboard Preview
